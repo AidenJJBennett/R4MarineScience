@@ -1,6 +1,6 @@
 ---
-title: "R for Marine Science Workshop 1"
-author: "Your name here"
+title: "Workshop_5"
+author: "Aiden Bennett"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
  html_document:
@@ -18,7 +18,6 @@ editor_options:
   chunk_output_type: inline
 ---
 
-
 ```{r setup, include=FALSE}
 # Set options, housekeeping
 knitr::opts_chunk$set(
@@ -28,23 +27,53 @@ knitr::opts_chunk$set(
 	warning = FALSE)
 ```
 
-## Introduction
+### --- Introduction ---
+This is the first workshop of Module 2, focusing on data wrangling and plotting using the penguins data set
 
-
-### Clear out environment
+### -- Clear out environment --
 ```{r housekeeping, message=FALSE, warning=FALSE, include=FALSE}
 rm(list=ls())
 ```
 
-### Load packages
+### -- Load packages --
 ```{r packages, message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
 ```
 
-### Source script
+### -- Source script -- 
 ```{r source-script1, message=FALSE, warning=FALSE, include=FALSE}
 source("Workshop1.R")
 ```
 
+### -- Summary Table and Plots --
+```{r, message=FALSE, warning=FALSE}
+# Creating the summary table
+penguin_mean_mass <- penguins %>% # Choosing data set
+  group_by(species, island) %>% # Selecting grouping variables
+  summarise(
+    sample_size = n(), # Including all individuals
+    mean_mass_g = mean(body_mass_g, na.rm = TRUE), # Calculating mean mass based on grouping variables
+    sd_mass_g = sd(body_mass_g, na.rm = TRUE), # Calculating standard deviation of body mass
+    se_mass_g = sd(body_mass_g) / sqrt(n()), na.rm = TRUE) # Calculating standard error of body mass
+print(penguin_mean_mass)
 
+# Standard Error Plotting with a pseudo-boxplot
+ggplot(data = penguin_mean_mass, aes(x = species, y = mean_mass_g, shape = species)) + 
+  geom_errorbar(aes(ymin = mean_mass_g - se_mass_g, 
+                    ymax = mean_mass_g + se_mass_g), 
+                width = 0.2) +
+  geom_point(mapping = aes(color = species), size = 3) +
+  facet_wrap(~island) +
+  labs(title = "Mean Body Mass of Penguins by Species and Island",
+       y = "Mean Body Mass (g)",
+       x = "Species") + 
+  theme_bw()
+```
+### -- Ecological Interpretations --
+Based on the summary table and the plot, there are several factors that immediately stand out. Despite Adelie penguins being present on all of the islands, they does not appear to be any statistically significant differences in their body mass between islands as the standard error is overlapping for all islands. They are also close in size to the Chinstrap penguins on Dream island, also represented with the very low standard error. Gentoo penguins grow significantly larger than both species, but without standard error it could suggest that the colony is composed of adults, while the other species may have overall younger colonies or a mix of ages.
 
+### -- Penguins Data Set Summary --
+The penguins data set covers three different species across three islands, covering body size, flipper length and sex across multiple survey years from the Palmer Station Research Site in Antarctica. With almost 350 separate individuals recorded it was a moderately sized data set that required a significant amount of work to clean and make readable for proper visualization and analysis. There are some missing data points, which if left unchecked prevented any analysis, although the data set contains enough complete variables that there are still analyses that could be done without needed to remove the missing data.
+
+### -- Reflection on Today's Workshop --
+As an AI-Off session, it made little difference to me as I always strive to employ as little AI assistance as possible when coding, especially if I am working with something that is completely new to me. I find that doing so helps me initially learn the material and retain the information long after I have finished working on it. Working to troubleshoot errors in syntax or the console manually forces me to work harder but feels rewarding once I can figure it out on my own. Working with default piping was new for me, but I do have enough experience with the tidyverse %>% piping that I had little trouble figuring it out once I swapped over. Working with modern tibbles is easier than the legacy data frames, as it shows the vector type and also labels the overall size of the data frame while only giving a preview. The legacy version will attempt to print the whole frame in the console which can quickly crash your program if the data frame is too large. The new methods I learned in the Workshop will be very helpful in the future, and not using AI was definitely a positive for learning how to do the work myself instead of relying on the AI to be a shortcut.
