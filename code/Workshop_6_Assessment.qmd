@@ -34,7 +34,6 @@ This document contains the assessment items for Workshop 2 of Module 2. The Estu
 ### -- Phase 1: Data Cleaning --
 
 Pre-Cleaning Actions
-
 ```{r, message=FALSE, warning=FALSE}
 # Load packages
 library(tidyverse)
@@ -43,6 +42,7 @@ library(lubridate)
 library(dplyr)
 library(purrr)
 library(readxl)
+library(readr)
 
 # Loading the data
 estuary_catch_log <-"C:/Documents/Masters Docs General/MB5370 - Techniques in Marine Science 1/Github/R4MarineScience/data/estuary_catch_log.xlsx"
@@ -53,14 +53,13 @@ catch <- map_dfr(
     mutate(site = .x)
 ) # Combines the sheets of the estuary catch log into one data frame
 
-# Renaming other data sets for easier use
-species <- species_dictionary
-sonde <- estuary_sonde_data
-metadata <- estuary_metadata
+# Load the other data sets
+sonde <- read_csv("C:/Documents/Masters Docs General/MB5370 - Techniques in Marine Science 1/Github/R4MarineScience/data/estuary_sonde_data.csv")
+metadata <- read_csv("C:/Documents/Masters Docs General/MB5370 - Techniques in Marine Science 1/Github/R4MarineScience/data/estuary_metadata.csv")
+species <- read_csv("C:/Documents/Masters Docs General/MB5370 - Techniques in Marine Science 1/Github/R4MarineScience/data/species_dictionary.csv")
 ```
 
 First changes to the data formats
-
 ```{r, message=FALSE, warning=FALSE}
 # Modify fish and site names in catch log to help match metadata and species dictionary
 catch <- catch %>%
@@ -100,7 +99,6 @@ sonde <- sonde %>%
 ### -- Phase 2: Relational Architecture --
 
 Summarize water sensor data for temperature and salinity to mean daily values
-
 ```{r, message=FALSE, warning=FALSE}
 sonde_daily <- sonde %>%
   mutate(day = floor_date(timestamp, unit = "day")) %>%
@@ -113,7 +111,6 @@ sonde_daily <- sonde %>%
 ```
 
 Merge fish species names from dictionary to catch data
-
 ```{r, message=FALSE, warning=FALSE}
 catch <- catch %>%
    left_join(species, by = c("species" = "common_name")) %>%
@@ -122,7 +119,6 @@ catch <- catch %>%
 ```
 
 Combine the data into one master frame
-
 ```{r, message=FALSE, warning=FALSE}
 survey_summary <- catch %>%
   left_join(metadata, by = c("site" = "site_name")) %>%
@@ -132,7 +128,6 @@ survey_summary <- catch %>%
 ### -- Phase 3: Zero-Catch Framework --
 
 Data was only recorded when a fish was caught, need to replace NA values with 0 and make a new framework. Adds rows where no fish were counted
-
 ```{r, message=FALSE, warning=FALSE}
 zero_frame <- survey_summary %>%
   complete(site, species, date) %>%
@@ -142,7 +137,6 @@ zero_frame <- survey_summary %>%
 ### -- Phase 4: Statistical Extraction --
 
 Make a clean summary table from the master sheet with mean and standard error of fish catch and salinity for each species in each zone
-
 ```{r, message=FALSE, warning=FALSE}
 mean_values <- survey_summary %>%
   group_by(species, zone) %>%
@@ -159,7 +153,6 @@ mean_values <- survey_summary %>%
 ### -- Phase 5: Visual Communication --
 
 The final step is to produce graphs from the data sets. Specifically a ggplot graph of the abundance of different species across the salinity gradients. The plot also needs to be faceted by species.
-
 ```{r, message=FALSE, warning=FALSE}
 # Need to make the facet labels italicized
 labs <- c(
