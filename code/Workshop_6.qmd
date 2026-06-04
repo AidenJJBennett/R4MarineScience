@@ -409,26 +409,48 @@ clean_log <- sensor_log |>
 
 ### -- Exercises: Penguins, Pivots and Relational Data --
 
+```{r, message=FALSE, warning=FALSE}
+# Make sure packages are loaded
+library(tidyverse)
+library(lubridate)
+library(palmerpenguins)
 
+# The messy metadata provided by your colleague
+island_metadata <- tibble(
+  island_name = c(" biscoe", "Dream ", "Torgersen"),
+  station_install = c("15/01/2003", "22-03-2004", "05/11/2001"),
+  latitude = c(-64.81, -64.73, -64.76)
+)
 
+print(island_metadata)
+```
+Create a new object called clean_metadata. Using mutate(), stringr, and lubridate, fix the island_name column so that it perfectly matches the island column in the penguins data set
+```{r message=FALSE, warning=FALSE}
+# Cleaning the data into readable format
+library(tidyverse)
+library(lubridate)
+library(stringr)
+clean_metadata <- island_metadata |>
+  mutate(
+    island = str_to_title(island_name),
+    island = str_squish(island),
+    date = dmy(station_install)
+  )
+print(clean_metadata)
 
+# Create new penguins_spatial and join with existing penguins data set.
+penguins_spatial <- penguins |>
+  left_join(clean_metadata, by = join_by(island == island))
+head(penguins_spatial)
 
+# New table with maximum body mass
+penguins_summary <- penguins_spatial |>
+  drop_na(body_mass_g) |>
+  group_by(species, island) |>
+  summarise(max_mass = max(body_mass_g)) |>
+  pivot_wider(names_from = island, values_from = max_mass)
+print(penguins_summary)
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+This is the end of the practice workshop, the assessment exercises are contained in a separate document.
 
