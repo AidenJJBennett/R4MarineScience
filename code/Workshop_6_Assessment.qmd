@@ -137,10 +137,18 @@ zero_frame <- survey_summary %>%
 
 Make a clean summary table from the master sheet with mean and standard error of fish catch and salinity for each species in each zone
 ```{r, message=FALSE, warning=FALSE}
-mean_values <- survey_summary
-
-
-
-
-
+mean_values <- survey_summary %>%
+  group_by(species, zone) %>%
+  summarise(
+    n = n(),
+    mean_catch = mean(count, na.rm = TRUE),
+    se_catch = sd(count, na.rm = TRUE) / sqrt(n),
+    mean_sal = mean(mean_salinity, na.rm = TRUE),
+    se_sal = sd(mean_salinity, na.rm = TRUE) / sqrt(n),
+    .groups = "drop"
+  )
 ```
+
+
+### -- Phase 5: Visual Communication --
+
