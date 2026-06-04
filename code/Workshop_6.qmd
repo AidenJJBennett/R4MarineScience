@@ -1,0 +1,434 @@
+---
+title: "Workshop_6"
+author: "Aiden Bennett"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+# Set options, housekeeping
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = TRUE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+### --- Introduction ---
+This file contains the practice section of workshop 2 of Module 2, with the assessment content being contained in a separate file. This workshop continues to focus on data wrangling and working with more difficult data sets. The workshop contains exercises on data manipulation, joining and separating data frames, and dealing with missing values.
+
+
+### -- Tidying data ---
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse) # The main package used for data cleaning
+```
+
+Cleaning data is an essential skill for a data scientist. 
+```{r, message=FALSE, warning=FALSE}
+table1
+#> # A tibble: 6 × 4
+#>   country      year  cases population
+#>   <chr>       <int>  <int>      <int>
+#> 1 Afghanistan  1999    745   19987071
+#> 2 Afghanistan  2000   2666   20595360
+#> 3 Brazil       1999  37737  172006362
+#> 4 Brazil       2000  80488  174504898
+#> 5 China        1999 212258 1272915272
+#> 6 China        2000 213766 1280428583
+table2
+#> # A tibble: 12 × 4
+#>   country      year type           count
+#>   <chr>       <int> <chr>          <int>
+#> 1 Afghanistan  1999 cases            745
+#> 2 Afghanistan  1999 population  19987071
+#> 3 Afghanistan  2000 cases           2666
+#> 4 Afghanistan  2000 population  20595360
+#> 5 Brazil       1999 cases          37737
+#> 6 Brazil       1999 population 172006362
+#> # ... with 6 more rows
+table3
+#> # A tibble: 6 × 3
+#>   country      year rate             
+#> * <chr>       <int> <chr>            
+#> 1 Afghanistan  1999 745/19987071     
+#> 2 Afghanistan  2000 2666/20595360    
+#> 3 Brazil       1999 37737/172006362  
+#> 4 Brazil       2000 80488/174504898  
+#> 5 China        1999 212258/1272915272
+#> 6 China        2000 213766/1280428583
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Compute rate per 10,000
+table1 %>% 
+  mutate(rate = cases / population * 10000)
+#> # A tibble: 6 × 5
+#>   country      year  cases population  rate
+#>   <chr>       <int>  <int>      <int> <dbl>
+#> 1 Afghanistan  1999    745   19987071 0.373
+#> 2 Afghanistan  2000   2666   20595360 1.29 
+#> 3 Brazil       1999  37737  172006362 2.19 
+#> 4 Brazil       2000  80488  174504898 5.61 
+#> 5 China        1999 212258 1272915272 1.67 
+#> 6 China        2000 213766 1280428583 1.67
+
+# Compute cases per year
+table1 %>% 
+  count(year, wt = cases)
+#> # A tibble: 2 × 2
+#>    year      n
+#>   <int>  <int>
+#> 1  1999 250740
+#> 2  2000 296920
+
+# Visualize changes over time
+ggplot(table1, aes(year, cases)) + 
+  geom_line(aes(group = country), colour = "grey50") + 
+  geom_point(aes(colour = country))
+```
+
+Three main rules for data cleaning.
+1) Each variable must have its own column.
+2) Each observation must have its own row.
+3) Each value must have its own cell.
+
+A consistent data structure and organised variables allows for an easier transition from data recording to analysis.
+
+Pivoting data sets is the first step, by lengthening 'tidyr:pivot_longer()' or widening 'pivot_wider()' to change its format into a more readable form.
+
+
+### -- Data Pivoting --
+
+Lengthening increases the number of rows while reducing columns, as an example it can combine multiple readings across years into one new column. 
+
+Need to specify columns 'col' you want to pivot, what you want to rename it 'names_to', and where the new variable should be moved 'values_to'.
+
+Here is an example of a pivot_longer
+```{r, message=FALSE, warning=FALSE}
+df <- tribble(
+  ~id,  ~bp1, ~bp2,
+   "A",  100,  120,
+   "B",  140,  115,
+   "C",  120,  125
+) # Has columns for bp1 and bp2 and values in a 3x3 grid
+
+df |> 
+  pivot_longer(
+    cols = bp1:bp2,
+    names_to = "measurement",
+    values_to = "value"
+  ) # Combines bp1 and bp2 into one column and makes a new column just for the value. now a 6x3 grid.
+```
+
+Widening is the opposite, combining observations from multiple rows into one. We do not make new column names as with lengthening, instead we name existing columns to move the data to. 
+
+Below is an example of pivot_wider()
+```{r, message=FALSE, warning=FALSE}
+df <- tribble(
+  ~id, ~measurement, ~value,
+  "A",        "bp1",    100,
+  "B",        "bp1",    140,
+  "B",        "bp2",    115, 
+  "A",        "bp2",    120,
+  "A",        "bp3",    105
+) # Take the names from measurement and values from value columns
+
+df |> 
+  pivot_wider(
+    names_from = measurement,
+    values_from = value
+  )
+#> # A tibble: 2 × 4
+#>   id      bp1   bp2   bp3
+#>   <chr> <dbl> <dbl> <dbl>
+#> 1 A       100   120   105
+#> 2 B       140   115    NA
+```
+
+The columns are simplified with a clearer data frame.
+
+
+### -- Palmer Penguins Examples --
+
+Lengthening, using the Palmer penguins data set to combine measurements into one column with the values in only one column
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(palmerpenguins)
+
+# Create a long version of the penguins dataset
+
+penguins_long <- penguins |>
+  pivot_longer(
+    cols = c(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g),
+    names_to = "measurement_type",
+    values_to = "value"
+  )
+# View the result
+head(penguins_long)
+
+penguins_long |>
+  drop_na(value) |>
+  ggplot(aes(x = value, fill = species)) +
+  geom_histogram(bins = 30, alpha = 0.7, colour = "black") +
+  facet_wrap(~ measurement_type, scales = "free_x") +
+  theme_minimal() +
+  labs(
+    title = "Morphometric distributions across penguin species",
+    x = "Measurement value",
+    y = "Frequency"
+  )
+```
+
+Widening, by putting the islands in their own column and combining all of the values of mass into one mean value for each island and species.
+```{r, message=FALSE, warning=FALSE}
+mass_summary <- penguins |>
+  drop_na(body_mass_g) |>
+  group_by(species, island) |>
+  summarise(mean_mass = mean(body_mass_g))
+
+head(mass_summary)
+
+# A different format better for publications
+mass_matrix <- mass_summary |>
+  pivot_wider(
+    names_from = island,
+    values_from = mean_mass
+  )
+
+head(mass_matrix)
+```
+
+
+### -- Separating and Uniting Data Sets --
+
+Using table3 from earlier, we see that rates is a combined column with two variables, that we want to separate.
+
+```{r, message=FALSE, warning=FALSE}
+table3 %>% 
+  separate(rate, into = c("cases", "population")) # This puts the values from the last column into two new ones, cases and population.
+
+table3 %>% 
+  separate(rate, into = c("cases", "population"), sep = "/") # Separates the values at the / instead of the default location.
+
+table3 %>% 
+  separate(rate, into = c("cases", "population"), convert = TRUE) # Converts data type from initial, character, to a more applicable type, in this case integer.
+
+table3 %>% 
+  separate(year, into = c("century", "year"), sep = 2) # Splits the year function into two new values using the first two and last two values.
+```
+
+When uniting a data set, you select the values that need to be joined
+```{r, message=FALSE, warning=FALSE}
+table5 %>% 
+  unite(new, century, year, sep = "") # Combines century and year together, sep = "" gets rid of the gap between them.
+```
+
+
+### -- Wrangling strings and dates --
+
+The stringr package standardizes text, which is helpful with R and trying to find values in future functions.
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# A remarkably messy data frame of field sites
+messy_sites <- tibble(
+  site_id = c(" Nelly Bay", "nelly_bay", "NELLY BAY", " Geoffrey_Bay ", "geoffrey bay")
+)
+
+# Using stringr within mutate to standardize the text
+clean_sites <- messy_sites |>
+  mutate(
+    # 1. Convert everything to lowercase
+    site_clean = str_to_lower(site_id),
+    # 2. Replace any spaces with underscores
+    site_clean = str_replace_all(site_clean, pattern = " ", replacement = "_"),
+    # 3. Trim any leading or trailing white space (invisible spaces at the ends)
+    site_clean = str_trim(site_clean)
+  )
+
+print(clean_sites)
+```
+
+For adjusting date formats, use the lubricate package
+```{r, message=FALSE, warning=FALSE}
+library(lubridate)
+
+# Parsing different date formats
+date_1 <- dmy("25/12/2026")
+date_2 <- ymd("2026-12-25")
+
+# Should make them recognize each other as the same date
+date_1 == date_2
+```
+Adding _hms to the function will specify further to exact time stamps in hours, minutes, seconds.
+```{r, message=FALSE, warning=FALSE}
+# A tibble of raw sensor data with a messy character timestamp
+sensor_data <- tibble(
+  raw_time = c("14-05-2026 08:30:00", "14-05-2026 08:45:00", "14-05-2026 09:00:00"),
+  temperature = c(24.5, 24.6, 24.4)
+)
+
+# Converting character strings to true POSIXct datetime objects
+sensor_clean <- sensor_data |>
+  mutate(
+    true_time = dmy_hms(raw_time)
+  )
+
+print(sensor_clean)
+```
+
+
+### -- Joining Tables --
+
+The dplyr package can combine two data sets if they share a variable.
+```{r, message=FALSE, warning=FALSE}
+# Table 1: Biological observation data
+observations <- tibble(
+  site_code = c("NB", "GB", "MI", "NB"),
+  species = c("Trout", "Snapper", "Trout", "Cod"),
+  count = c(5, 2, 1, 3)
+)
+
+# Table 2: Spatial metadata
+site_metadata <- tibble(
+  site_code = c("NB", "GB", "MI", "RP"),
+  zone = c("Marine National Park", "Conservation Park", "Habitat Protection", "General Use"),
+  lat = c(-19.16, -19.15, -19.14, -19.12)
+)
+```
+
+left_join() is the most common , combining all rows from left table and matches data with the right one, and fills in any missing gaps with NA
+```{r, message=FALSE, warning=FALSE}
+# Joining metadata to our observations
+joined_data <- observations |>
+  left_join(site_metadata, by = join_by(site_code))
+
+print(joined_data)
+```
+
+inner_join() is more strict, only keeping rows that have exact matched between the tables, if it is not listed in the metadata it will be dropped fully.
+```{r, message=FALSE, warning=FALSE}
+matched_data <- observations |>
+  inner_join(site_metadata, by = join_by(site_code))
+glimpse(matched_data)
+```
+
+anti_join() instead of adding new columns will filter the left table and only show rows that do not match with the right, it can show which codes may be missing or mislabeled.
+```{r, message=FALSE, warning=FALSE}
+# Which observations are missing from our metadata dictionary?
+missing_context <- observations |>
+  anti_join(site_metadata, by = join_by(site_code)) 
+#site_code, species and count are missing
+```
+
+
+### -- Handling Missing Values --
+
+Some instruments and equipment will not input NA, instead a random placeholder value, ex. -9999, that can be a problem for future calculations. To fix this, use dplyr::na_if()
+```{r, message=FALSE, warning=FALSE}
+# Raw data from an old temperature logger
+logger_data <- tibble(
+  depth_m = c(10, 20, 30, 40),
+  temp_c = c(24.5, 24.1, -999, 23.5)) # -999 is a known sensor error code
+
+# Convert the -999 error codes to true NA values
+fixed_logger <- logger_data |>
+  mutate(temp_c = na_if(temp_c, -999))
+
+print(fixed_logger)
+```
+
+NA does not always mean the data is missing, instead it could be a known number like 0. dplyr::coalesce() inside a mutate will track all NAs and set them to a desired value
+```{r, message=FALSE, warning=FALSE}
+# Simulate some count data
+shark_counts <- tibble(
+  site = c("Reef_A", "Reef_B", "Reef_C"),
+  shark_count = c(3, NA, 5)) # The NA here actually means 0 sharks were seen
+
+# Replace NA with 0 
+shark_fixed <- shark_counts |>
+  mutate(shark_count = coalesce(shark_count, 0))
+
+print(shark_fixed)
+```
+
+If NaN, or Not a Number, values are in the data set, then it is likely a mathematical error which can be removed the same way as NA, or tracked with is.nan()
+```{r, message=FALSE, warning=FALSE}
+cpue_data <- tibble(
+  site = c("Bay_1", "Bay_2"),
+  catch = c(10, 0),
+  effort_hours = c(2, 0))
+
+# Calculating CPUE (catch / effort)
+cpue_calc <- cpue_data |>
+  mutate(
+    cpue = catch / effort_hours)
+
+print(cpue_calc) # Bay 2 has NaN
+```
+
+For implicit values, complete() builds a zero-data framework, replacing NA with 0.
+```{r, message=FALSE, warning=FALSE}
+raw_catch <- tibble(
+  site = c("Reef_1", "Reef_1", "Reef_2"),
+  species = c("Pmaculatus", "Pleopardus", "Pmaculatus"),
+  count = c(5, 2, 8))
+# Force inclusion of hidden zero-catch data
+full_catch_matrix <- raw_catch |>
+  complete(site, species, fill = list(count = 0))
+
+print(full_catch_matrix)
+```
+
+drop_na() is a last resort to remove all rows with NA
+```{r, message=FALSE, warning=FALSE}
+sensor_log <- tibble(
+  day = 1:4,
+  salinity = c(35.2, 35.1, NA, 35.3)
+)
+
+# Remove any row where salinity is missing
+clean_log <- sensor_log |>
+  drop_na(salinity)
+```
+
+
+### -- Exercises: Penguins, Pivots and Relational Data --
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
